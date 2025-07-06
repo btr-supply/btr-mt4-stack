@@ -1,0 +1,35 @@
+# Ignore everything by default
+
+# Exclude the ./mitch specifications directory and its contents
+mitch/
+rust_dlls/.cargo/
+target/
+build/
+dist/
+rust_dlls/Cargo.lock
+Logs/
+Controls/
+Indicators/
+*.dat
+*.log
+*.exe
+*.ex4
+*.ex5
+*.bin
+
+# Ignore all bmp files
+*.bmp
+
+# Ignore all mq4, mq5, and mqh files by default
+*.mq4
+*.mq5
+*.mqh
+
+# Ignore all .env files
+.env
+**/.env
+
+# Now, re-include (un-ignore) the files prefixed with BTR
+!BTR*.mq4
+!BTR*.mq5
+!BTR*.mqh

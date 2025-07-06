@@ -1,0 +1,125 @@
+# MetaTrader 4 Redis DLL Development Environment
+
+## Project Overview
+High-performance Redis client DLL for MetaTrader 4 using Rust, with raw bytes interface and cross-compilation for Windows i386 target.
+
+## Environment
+- **Host**: Linux (Docker container)
+- **Target**: Windows i686 (32-bit) via Wine32
+- **MT4**: MetaTrader 4 terminal.exe with MQL4 compiler
+- **Testing**: Wine32 for Windows binary execution
+
+## Technical Requirements
+1. **Calling Convention**: `extern "stdcall"` for all exported functions
+2. **String Handling**: Raw bytes (`*const c_uchar`) - NO string conversion in DLL
+3. **Memory Management**: Caller-allocates pattern for all buffers
+4. **Architecture**: 32-bit Intel (i686-pc-windows-gnu)
+5. **Performance**: Minimal overhead, direct byte operations only
+
+## MQL4 Syntax Requirements
+1. **Reserved Keywords**: Never use MQL4 reserved words as parameter names:
+   - `input` - reserved for input parameters
+   - `output` - reserved keyword
+   - `string` - type keyword
+   - `int` - type keyword
+   - `double` - type keyword
+   - `bool` - type keyword
+   - `void` - type keyword
+   - `class` - class keyword
+   - `struct` - structure keyword
+   - Use alternative names like `str`, `data`, `buffer`, `value` instead
+
+2. **Array Parameters**: Use `uchar& array[]` not `uchar &array[]` (no space before &)
+
+3. **DLL Imports**: 
+   ```mql4
+   #import "redis_client.dll"
+      int function_name(uchar& param[], int param_len);
+   #import
+   ```
+
+4. **Array Size**: Never pass literals where references are expected
+   ```mql4
+   // WRONG: function(array, 1024)
+   // RIGHT: 
+   int size = ArraySize(array);
+   function(array, size);
+   ```
+
+## BTR File Naming Convention
+All BTR MetaTrader files use the `BTR` prefix:
+- **Include Files**: `BTRRedisClient.mqh`, `BTRMitchModel.mqh`, `BTRMitchSerializer.mqh`, `BTRIds.mqh`
+- **Script Files**: `BTRRedisTest.mq4`, `BTRMitchTest.mq4`
+- **Expert Files**: `BTRMitchTickerDemo.mq4`, `BTRMitchRedisDemo.mq4`
+
+## Directory Structure
+```
+MQL4/
+├── rust_dlls/                 # Rust DLL source
+│   ├── src/lib.rs             # Main DLL implementation (RAW BYTES ONLY)
+│   ├── src/test_runner.rs     # Wine32 test runner
+│   └── target/i686-pc-windows-gnu/release/redis_client.dll
+├── Libraries/                 # MT4 DLL directory
+│   └── redis_client.dll      # Deployed DLL
+├── Include/                   # MQL4 headers (BTR prefixed)
+│   ├── BTRRedisClient.mqh    # DLL wrapper functions (handles UTF-8 conversion)
+│   ├── BTRMitchModel.mqh     # MITCH data structures
+│   ├── BTRMitchSerializer.mqh # MITCH serialization functions
+│   └── BTRIds.mqh            # BTR identifier utilities
+├── Scripts/                   # MQL4 test scripts (BTR prefixed)
+│   ├── BTRRedisTest.mq4      # Redis client test script
+│   └── BTRMitchTest.mq4      # Complete MITCH test suite (symbol cleanup, ID generation, serialization, performance)
+└── Experts/                   # Expert Advisors (BTR prefixed)
+    ├── BTRMitchTickerDemo.mq4 # MITCH ticker demo
+    └── BTRMitchRedisDemo.mq4  # MITCH + Redis integration demo
+```
+
+## Build Commands
+```bash
+# Build and deploy DLL
+make deploy
+
+# Run comprehensive DLL tests with Wine32
+make test
+
+# Compile MQL4 files
+make compile-mql4
+
+# Full development workflow (build, deploy, test, compile)
+make dev
+
+# Production build with optimizations
+make release
+
+# Clean all build artifacts
+make clean
+
+# Show all available commands
+make help
+```
+
+## Key Dependencies (Minimal Set)
+- `redis = "0.27"` - Redis client
+- `lazy_static = "1.4"` - Thread-safe globals
+- `libloading = "0.8"` - Dynamic library loading for tests
+
+## Critical Notes
+- **DLL ONLY HANDLES RAW BYTES** - No string conversion in Rust code
+- All exported functions MUST use `extern "stdcall"` calling convention
+- String parameters are raw bytes (`*const c_uchar`, `c_int` length)
+- MQL4 wrapper handles all UTF-8 ↔ string conversion using MQL4 native functions
+- Return data uses caller-allocates pattern to prevent memory issues
+- Test runner uses release builds for Wine32 compatibility
+- Wine32 provides Windows 10 simulation for comprehensive DLL validation
+
+## String Conversion Strategy
+- **Rust DLL**: Only converts bytes to strings when absolutely required for redis-rs
+- **MQL4 Wrapper**: Handles all string ↔ UTF-8 bytes conversion using:
+  - `StringToCharArray(str, bytes, 0, WHOLE_ARRAY, CP_UTF8)` for string → bytes
+  - `CharArrayToString(bytes, 0, length, CP_UTF8)` for bytes → string
+
+## Compilation Troubleshooting
+1. **MQL4 Reserved Keywords**: Check parameter names for reserved words
+2. **Array Syntax**: Ensure `uchar& param[]` format (no space before &)
+3. **ArraySize Usage**: Never pass literals where references expected
+4. **DLL Exports**: Verify function names match between Rust and MQL4 exactly
