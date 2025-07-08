@@ -171,12 +171,20 @@ int PackTickerMessageFast(const TickerBody &ticker, uchar &buffer[])
    return headerSize + bodySize;
 }
 
-// Create ticker from MT4 symbol using proper MITCH ID generation
+// Create ticker from MT4 symbol using unified asset resolution
 TickerBody CreateTickerFromSymbol(string symbol)
 {
    TickerBody ticker;
    
-   // Generate proper MITCH ticker ID (symbol cleanup handled internally)
+   // Ensure assets are initialized
+   if(!InitializeBTRAssets())
+   {
+      Print("ERROR: Failed to initialize BTR assets");
+      ticker.tickerId = 0;
+      return ticker;
+   }
+   
+   // Generate proper MITCH ticker ID using unified resolver
    ticker.tickerId = GetMitchTickerID(symbol);
    
    // Get current market data (use original symbol for MT4 functions)

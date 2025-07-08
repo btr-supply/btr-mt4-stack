@@ -1,459 +1,512 @@
 //+------------------------------------------------------------------+
 //|                                                       BTRIds.mqh |
-//| Copyright BTR Supply                                             |
-//| https://btr.supply                                               |
+//|                 Copyright BTR Supply (Refactored)                |
+//|                         https://btr.supply                       |
 //+------------------------------------------------------------------+
 #property strict
 
 #include "BTRHashMap.mqh"
+#include "BTRUtils.mqh"
 
 //+------------------------------------------------------------------+
-//| BTR Currency Constants (uint32)                                 |
-//+------------------------------------------------------------------+
-#define BTR_CURRENCY_ARS    1      // Argentine Peso
-#define BTR_CURRENCY_AUD    11     // Australian Dollar
-#define BTR_CURRENCY_BRL    21     // Brazilian Real
-#define BTR_CURRENCY_GBP    31     // British Pound Sterling
-#define BTR_CURRENCY_CAD    41     // Canadian Dollar
-#define BTR_CURRENCY_CLP    51     // Chilean Peso
-#define BTR_CURRENCY_CNY    61     // Chinese Renminbi
-#define BTR_CURRENCY_COP    71     // Colombian Peso
-#define BTR_CURRENCY_CZK    81     // Czech Koruna
-#define BTR_CURRENCY_DKK    91     // Danish Krone
-#define BTR_CURRENCY_EGP    101    // Egyptian Pound
-#define BTR_CURRENCY_EUR    111    // Euro
-#define BTR_CURRENCY_HKD    121    // Hong Kong Dollar
-#define BTR_CURRENCY_HUF    131    // Hungarian Forint
-#define BTR_CURRENCY_INR    141    // Indian Rupee
-#define BTR_CURRENCY_IDR    151    // Indonesian Rupiah
-#define BTR_CURRENCY_ILS    161    // Israeli New Shekel
-#define BTR_CURRENCY_JPY    171    // Japanese Yen
-#define BTR_CURRENCY_KZT    181    // Kazakhstani Tenge
-#define BTR_CURRENCY_KWD    191    // Kuwaiti Dinar
-#define BTR_CURRENCY_MYR    201    // Malaysian Ringgit
-#define BTR_CURRENCY_MXN    211    // Mexican Peso
-#define BTR_CURRENCY_MAD    221    // Moroccan Dirham
-#define BTR_CURRENCY_TWD    231    // New Taiwan Dollar
-#define BTR_CURRENCY_NZD    241    // New Zealand Dollar
-#define BTR_CURRENCY_NGN    251    // Nigerian Naira
-#define BTR_CURRENCY_NOK    261    // Norwegian Krone
-#define BTR_CURRENCY_PKR    271    // Pakistani Rupee
-#define BTR_CURRENCY_PEN    281    // Peruvian Sol
-#define BTR_CURRENCY_PHP    291    // Philippine Peso
-#define BTR_CURRENCY_PLN    301    // Polish Złoty
-#define BTR_CURRENCY_QAR    311    // Qatari Riyal
-#define BTR_CURRENCY_RON    321    // Romanian Leu
-#define BTR_CURRENCY_RUB    331    // Russian Ruble
-#define BTR_CURRENCY_SAR    341    // Saudi Riyal
-#define BTR_CURRENCY_RSD    351    // Serbian Dinar
-#define BTR_CURRENCY_SGD    361    // Singapore Dollar
-#define BTR_CURRENCY_ZAR    371    // South African Rand
-#define BTR_CURRENCY_KRW    381    // South Korean Won
-#define BTR_CURRENCY_LKR    391    // Sri Lankan Rupee
-#define BTR_CURRENCY_SEK    401    // Swedish Krona
-#define BTR_CURRENCY_CHF    411    // Swiss Franc
-#define BTR_CURRENCY_THB    421    // Thai Baht
-#define BTR_CURRENCY_TRY    431    // Turkish Lira
-#define BTR_CURRENCY_AED    441    // UAE Dirham
-#define BTR_CURRENCY_UAH    451    // Ukrainian Hryvnia
-#define BTR_CURRENCY_USD    461    // US Dollar
-#define BTR_CURRENCY_VND    471    // Vietnamese Dong
-
-//+------------------------------------------------------------------+
-//| BTR Instrument Types (uint8)                                    |
-//+------------------------------------------------------------------+
-#define BTR_INST_SPOT             0x0    // Direct asset trading
-#define BTR_INST_FUTURE           0x1    // Standardized futures contract
-#define BTR_INST_FORWARD          0x2    // Custom forward contract
-#define BTR_INST_SWAP             0x3    // Interest rate or currency swap
-#define BTR_INST_PERPETUAL        0x4    // Crypto perpetual futures
-#define BTR_INST_CFD              0x5    // Contract for difference
-#define BTR_INST_CALL_OPTION      0x6    // Call option contract
-#define BTR_INST_PUT_OPTION       0x7    // Put option contract
-#define BTR_INST_DIGITAL_OPTION   0x8    // Binary/digital option
-#define BTR_INST_BARRIER_OPTION   0x9    // Barrier option contract
-#define BTR_INST_WARRANT          0xA    // Warrant contract
-#define BTR_INST_PREDICTION       0xB    // Contract based on predicted outcomes
-#define BTR_INST_STRUCTURED       0xC    // Financial instruments with multiple components
-#define BTR_INST_RESERVED_D       0xD    // Reserved for future use
-#define BTR_INST_RESERVED_E       0xE    // Reserved for future use
-#define BTR_INST_RESERVED_F       0xF    // Reserved for future use
-
-//+------------------------------------------------------------------+
-//| BTR Asset Classes (uint8)                                       |
-//+------------------------------------------------------------------+
-#define BTR_ASSET_EQUITIES        0x0    // AAPL, MSFT, GOOGL
-#define BTR_ASSET_CORP_BONDS      0x1    // Corporate debt securities
-#define BTR_ASSET_SOVEREIGN_DEBT  0x2    // Government bonds, treasuries
-#define BTR_ASSET_FOREX           0x3    // EUR, USD, JPY, GBP
-#define BTR_ASSET_COMMODITIES     0x4    // WTI, Brent, Gold, Silver
-#define BTR_ASSET_PRECIOUS_METALS 0x5    // Gold, Silver, Platinum
-#define BTR_ASSET_REAL_ESTATE     0x6    // REITs, property indices
-#define BTR_ASSET_CRYPTO          0x7    // BTC, ETH, USDC, SOL
-#define BTR_ASSET_PRIVATE_MARKETS 0x8    // Investments in private companies
-#define BTR_ASSET_COLLECTIBLES    0x9    // Art, antiques, rare items
-#define BTR_ASSET_INFRASTRUCTURE  0xA    // Investments in physical assets
-#define BTR_ASSET_INDICES         0xB    // Market indices and related products
-#define BTR_ASSET_STRUCTURED      0xC    // Financial instruments with multiple components
-#define BTR_ASSET_CASH_EQUIV      0xD    // Cash and cash-like instruments
-#define BTR_ASSET_LOANS           0xE    // Debt instruments and receivables
-#define BTR_ASSET_RESERVED        0xF    // Reserved for future use
-
-//+------------------------------------------------------------------+
-//| Currency Lookup Functions                                       |
+//| Global Hash Maps for Dynamic Asset Resolution                   |
 //+------------------------------------------------------------------+
 
-// Get BTR currency ID from ISO code
-uint GetBTRCurrencyFromISO(string iso_code)
+Hash* g_symbolCache = NULL;          // Symbol cleanup cache
+Hash* g_assetSymbolMap = NULL;       // Symbol -> BTR Asset ID mapping
+Hash* g_marketProviderCache = NULL;  // Broker name -> Provider ID mapping
+Hash* g_assetClassMap = NULL;        // Asset class name -> ID mapping
+Hash* g_instrumentTypeMap = NULL;    // Instrument type name -> ID mapping
+
+bool g_assetsInitialized = false;
+
+//+------------------------------------------------------------------+
+//| Asset Class Mapping Configuration                               |
+//+------------------------------------------------------------------+
+
+// Only hardcoded mapping: filename -> asset class name
+struct AssetFileMapping
 {
-   if(iso_code == "ARS") return BTR_CURRENCY_ARS;
-   if(iso_code == "AUD") return BTR_CURRENCY_AUD;
-   if(iso_code == "BRL") return BTR_CURRENCY_BRL;
-   if(iso_code == "GBP") return BTR_CURRENCY_GBP;
-   if(iso_code == "CAD") return BTR_CURRENCY_CAD;
-   if(iso_code == "CLP") return BTR_CURRENCY_CLP;
-   if(iso_code == "CNY") return BTR_CURRENCY_CNY;
-   if(iso_code == "COP") return BTR_CURRENCY_COP;
-   if(iso_code == "CZK") return BTR_CURRENCY_CZK;
-   if(iso_code == "DKK") return BTR_CURRENCY_DKK;
-   if(iso_code == "EGP") return BTR_CURRENCY_EGP;
-   if(iso_code == "EUR") return BTR_CURRENCY_EUR;
-   if(iso_code == "HKD") return BTR_CURRENCY_HKD;
-   if(iso_code == "HUF") return BTR_CURRENCY_HUF;
-   if(iso_code == "INR") return BTR_CURRENCY_INR;
-   if(iso_code == "IDR") return BTR_CURRENCY_IDR;
-   if(iso_code == "ILS") return BTR_CURRENCY_ILS;
-   if(iso_code == "JPY") return BTR_CURRENCY_JPY;
-   if(iso_code == "KZT") return BTR_CURRENCY_KZT;
-   if(iso_code == "KWD") return BTR_CURRENCY_KWD;
-   if(iso_code == "MYR") return BTR_CURRENCY_MYR;
-   if(iso_code == "MXN") return BTR_CURRENCY_MXN;
-   if(iso_code == "MAD") return BTR_CURRENCY_MAD;
-   if(iso_code == "TWD") return BTR_CURRENCY_TWD;
-   if(iso_code == "NZD") return BTR_CURRENCY_NZD;
-   if(iso_code == "NGN") return BTR_CURRENCY_NGN;
-   if(iso_code == "NOK") return BTR_CURRENCY_NOK;
-   if(iso_code == "PKR") return BTR_CURRENCY_PKR;
-   if(iso_code == "PEN") return BTR_CURRENCY_PEN;
-   if(iso_code == "PHP") return BTR_CURRENCY_PHP;
-   if(iso_code == "PLN") return BTR_CURRENCY_PLN;
-   if(iso_code == "QAR") return BTR_CURRENCY_QAR;
-   if(iso_code == "RON") return BTR_CURRENCY_RON;
-   if(iso_code == "RUB") return BTR_CURRENCY_RUB;
-   if(iso_code == "SAR") return BTR_CURRENCY_SAR;
-   if(iso_code == "RSD") return BTR_CURRENCY_RSD;
-   if(iso_code == "SGD") return BTR_CURRENCY_SGD;
-   if(iso_code == "ZAR") return BTR_CURRENCY_ZAR;
-   if(iso_code == "KRW") return BTR_CURRENCY_KRW;
-   if(iso_code == "LKR") return BTR_CURRENCY_LKR;
-   if(iso_code == "SEK") return BTR_CURRENCY_SEK;
-   if(iso_code == "CHF") return BTR_CURRENCY_CHF;
-   if(iso_code == "THB") return BTR_CURRENCY_THB;
-   if(iso_code == "TRY") return BTR_CURRENCY_TRY;
-   if(iso_code == "AED") return BTR_CURRENCY_AED;
-   if(iso_code == "UAH") return BTR_CURRENCY_UAH;
-   if(iso_code == "USD") return BTR_CURRENCY_USD;
-   if(iso_code == "VND") return BTR_CURRENCY_VND;
+   string filename;
+   string asset_class_name;
+};
+
+AssetFileMapping g_assetFileMappings[] = {
+   {"currencies.csv", "Forex"},      // Load currencies first to establish key symbols
+   {"commodities.csv", "Commodities"},
+   {"indices.csv", "Indices & Index Products"},
+   {"tokens.csv", "Crypto Assets"}
+};
+
+//+------------------------------------------------------------------+
+//| Dynamic Asset Loading Functions                                  |
+//+------------------------------------------------------------------+
+
+// Load asset classes from CSV
+bool LoadAssetClasses()
+{
+   CSVData csv_data;
+   if(!LoadCSVData("ids/asset-classes.csv", csv_data)) return false;
    
-   return 0; // Unknown currency
-}
-
-// Get ISO code from BTR currency ID
-string GetISOFromBTRCurrency(uint btr_id)
-{
-   switch(btr_id)
+   int btr_id_col = GetColumnIndex(csv_data, "btr_id");
+   int name_col = GetColumnIndex(csv_data, "name");
+   
+   if(btr_id_col < 0 || name_col < 0)
    {
-      case BTR_CURRENCY_ARS: return "ARS";
-      case BTR_CURRENCY_AUD: return "AUD";
-      case BTR_CURRENCY_BRL: return "BRL";
-      case BTR_CURRENCY_GBP: return "GBP";
-      case BTR_CURRENCY_CAD: return "CAD";
-      case BTR_CURRENCY_CLP: return "CLP";
-      case BTR_CURRENCY_CNY: return "CNY";
-      case BTR_CURRENCY_COP: return "COP";
-      case BTR_CURRENCY_CZK: return "CZK";
-      case BTR_CURRENCY_DKK: return "DKK";
-      case BTR_CURRENCY_EGP: return "EGP";
-      case BTR_CURRENCY_EUR: return "EUR";
-      case BTR_CURRENCY_HKD: return "HKD";
-      case BTR_CURRENCY_HUF: return "HUF";
-      case BTR_CURRENCY_INR: return "INR";
-      case BTR_CURRENCY_IDR: return "IDR";
-      case BTR_CURRENCY_ILS: return "ILS";
-      case BTR_CURRENCY_JPY: return "JPY";
-      case BTR_CURRENCY_KZT: return "KZT";
-      case BTR_CURRENCY_KWD: return "KWD";
-      case BTR_CURRENCY_MYR: return "MYR";
-      case BTR_CURRENCY_MXN: return "MXN";
-      case BTR_CURRENCY_MAD: return "MAD";
-      case BTR_CURRENCY_TWD: return "TWD";
-      case BTR_CURRENCY_NZD: return "NZD";
-      case BTR_CURRENCY_NGN: return "NGN";
-      case BTR_CURRENCY_NOK: return "NOK";
-      case BTR_CURRENCY_PKR: return "PKR";
-      case BTR_CURRENCY_PEN: return "PEN";
-      case BTR_CURRENCY_PHP: return "PHP";
-      case BTR_CURRENCY_PLN: return "PLN";
-      case BTR_CURRENCY_QAR: return "QAR";
-      case BTR_CURRENCY_RON: return "RON";
-      case BTR_CURRENCY_RUB: return "RUB";
-      case BTR_CURRENCY_SAR: return "SAR";
-      case BTR_CURRENCY_RSD: return "RSD";
-      case BTR_CURRENCY_SGD: return "SGD";
-      case BTR_CURRENCY_ZAR: return "ZAR";
-      case BTR_CURRENCY_KRW: return "KRW";
-      case BTR_CURRENCY_LKR: return "LKR";
-      case BTR_CURRENCY_SEK: return "SEK";
-      case BTR_CURRENCY_CHF: return "CHF";
-      case BTR_CURRENCY_THB: return "THB";
-      case BTR_CURRENCY_TRY: return "TRY";
-      case BTR_CURRENCY_AED: return "AED";
-      case BTR_CURRENCY_UAH: return "UAH";
-      case BTR_CURRENCY_USD: return "USD";
-      case BTR_CURRENCY_VND: return "VND";
-      default: return "";
+      Print("ERROR: asset-classes.csv missing required columns");
+      return false;
    }
-}
-
-//+------------------------------------------------------------------+
-//| Symbol Cleanup Functions                                        |
-//+------------------------------------------------------------------+
-
-// Symbol cleanup cache using hash map
-Hash* g_symbolCache = NULL;
-
-// Initialize symbol cache
-void InitializeSymbolCache()
-{
-   if(g_symbolCache == NULL)
-      g_symbolCache = new Hash(53, true); // Start with moderate size, auto-adopt values
-}
-
-// Get cleaned symbol from cache or clean and cache it
-string GetCleanedSymbol(string symbol)
-{
-   // Initialize cache if needed
-   if(g_symbolCache == NULL)
-      InitializeSymbolCache();
    
-   // Check cache first
-   HashString* cached = g_symbolCache.hGet(symbol);
-   if(cached != NULL)
-      return cached.getVal();
-   
-   // Clean symbol and add to cache
-   string cleaned;
-   CleanupSymbol(symbol, cleaned);
-   
-   // Store in cache
-   g_symbolCache.hPutString(symbol, cleaned);
-   
-   return cleaned;
-}
-
-// Optimized symbol cleanup function
-void CleanupSymbol(string symbol, string &target)
-{
-   target = symbol;
-   
-   // Remove common separators
-   StringReplace(target, ".", "");
-   StringReplace(target, "_", "");
-   StringReplace(target, "/", "");
-   
-   // Convert to uppercase early
-   StringToUpper(target);
-   
-   int len = StringLen(target);
-   if(len < 3) return; // Invalid symbol
-   
-   // CRITICAL: Check if this looks like a 6-char forex pair before cleanup
-   bool isCandidateForexPair = false;
-   if(len == 6)
+   int loaded = 0;
+   for(int i = 0; i < csv_data.rows; i++)
    {
-      string base = StringSubstr(target, 0, 3);
-      string quote = StringSubstr(target, 3, 3);
-      if(IsValidCurrency(base) && IsValidCurrency(quote))
+      string btr_id_str = GetCellByIndex(csv_data, i, btr_id_col);
+      string name = GetCellByIndex(csv_data, i, name_col);
+      
+      if(StringLen(btr_id_str) > 0 && StringLen(name) > 0)
       {
-         isCandidateForexPair = true;
-         // For valid forex pairs, skip all cleanup and return as-is
-         return;
+         uint btr_id = (uint)StringToInteger(btr_id_str);
+         g_assetClassMap.hPutLong(name, btr_id);
+         loaded++;
       }
    }
    
-   // Only apply cleanup to non-standard symbols
-   // Remove single character suffixes (-m, -c, -z, -b, -r, -d, -i)
-   string lastChar = StringSubstr(target, len-1, 1);
-   if(lastChar == "M" || lastChar == "C" || lastChar == "Z" || 
-      lastChar == "B" || lastChar == "R" || lastChar == "D" || lastChar == "I")
+   Print("Loaded " + IntegerToString(loaded) + " asset classes");
+   return loaded > 0;
+}
+
+// Load instrument types from CSV
+bool LoadInstrumentTypes()
+{
+   CSVData csv_data;
+   if(!LoadCSVData("ids/instrument-types.csv", csv_data)) return false;
+   
+   int btr_id_col = GetColumnIndex(csv_data, "btr_id");
+   int name_col = GetColumnIndex(csv_data, "name");
+   
+   if(btr_id_col < 0 || name_col < 0)
    {
-      target = StringSubstr(target, 0, len-1);
-      len = StringLen(target);
+      Print("ERROR: instrument-types.csv missing required columns");
+      return false;
    }
    
-   // Remove multi-character suffixes
-   if(len > 4)
+   int loaded = 0;
+   for(int i = 0; i < csv_data.rows; i++)
    {
-      string suffix4 = StringSubstr(target, len-4, 4);
-      if(suffix4 == "CASH" || suffix4 == "SPOT")
+      string btr_id_str = GetCellByIndex(csv_data, i, btr_id_col);
+      string name = GetCellByIndex(csv_data, i, name_col);
+      
+      if(StringLen(btr_id_str) > 0 && StringLen(name) > 0)
       {
-         target = StringSubstr(target, 0, len-4);
-         len = StringLen(target);
+         uint btr_id = (uint)StringToInteger(btr_id_str);
+         g_instrumentTypeMap.hPutLong(name, btr_id);
+         loaded++;
       }
-      else if(len > 5)
+   }
+   
+   Print("Loaded " + IntegerToString(loaded) + " instrument types");
+   return loaded > 0;
+}
+
+// Get asset class ID by name (dynamic lookup)
+uint GetAssetClassID(string asset_class_name)
+{
+   HashLong* asset_class = (HashLong*)g_assetClassMap.hGet(asset_class_name);
+   if(asset_class != NULL) return (uint)asset_class.getVal();
+   return 0;
+}
+
+// Get instrument type ID by name (dynamic lookup)
+uint GetInstrumentTypeID(string instrument_type_name)
+{
+   HashLong* instrument_type = (HashLong*)g_instrumentTypeMap.hGet(instrument_type_name);
+   if(instrument_type != NULL) return (uint)instrument_type.getVal();
+   return 0;
+}
+
+// Generic asset loading function
+bool LoadAssetType(string filename, string asset_class_name)
+{
+   CSVData csv_data;
+   if(!LoadCSVData("ids/" + filename, csv_data)) return false;
+   
+   int btr_id_col = GetColumnIndex(csv_data, "btr_id");
+   int name_col = GetColumnIndex(csv_data, "name");
+   int aliases_col = GetColumnIndex(csv_data, "aliases");
+   
+   if(btr_id_col < 0 || name_col < 0)
+   {
+      Print("ERROR: " + filename + " missing required columns (btr_id, name)");
+      return false;
+   }
+   
+   // Get asset class ID dynamically
+   uint asset_class_id = GetAssetClassID(asset_class_name);
+   if(asset_class_id == 0)
+   {
+      Print("ERROR: Asset class not found: " + asset_class_name);
+      return false;
+   }
+   
+   Print("DEBUG: Loading " + filename + " with asset class '" + asset_class_name + "' (ID: " + IntegerToString(asset_class_id) + ")");
+   
+   int loaded = 0;
+   for(int i = 0; i < csv_data.rows; i++)
+   {
+      string btr_id_str = GetCellByIndex(csv_data, i, btr_id_col);
+      string name = GetCellByIndex(csv_data, i, name_col);
+      string aliases = (aliases_col >= 0) ? GetCellByIndex(csv_data, i, aliases_col) : "";
+      
+      if(StringLen(btr_id_str) > 0 && StringLen(name) > 0)
       {
-         string suffix5 = StringSubstr(target, len-5, 5);
-         if(suffix5 == "MICRO")
+         uint btr_id = (uint)StringToInteger(btr_id_str);
+         
+         // Create MITCH asset ID: 4 bits class + 16 bits BTR ID (stored in 32-bit with 12 bits padding)
+         // Format: 0x000CXXXX where C is class (4 bits) and XXXX is BTR ID (16 bits)
+         uint asset_id = (asset_class_id << 16) | (btr_id & 0xFFFF);
+         
+         // Store primary name with collision detection
+         string clean_name;
+         CleanupSymbol(name, clean_name);
+         
+         // Check for collisions with important currency symbols
+         HashLong* existing = (HashLong*)g_assetSymbolMap.hGet(clean_name);
+         bool is_forex_override = (asset_class_name == "Forex");
+         bool is_protected_symbol = (clean_name == "EUR" || clean_name == "USD" || clean_name == "GBP" || 
+                                   clean_name == "JPY" || clean_name == "CHF" || clean_name == "CAD" || 
+                                   clean_name == "AUD" || clean_name == "NZD");
+         
+         // Debug collision detection
+         if(clean_name == "EUR" || clean_name == "USD")
          {
-            target = StringSubstr(target, 0, len-5);
-            len = StringLen(target);
+            Print("DEBUG COLLISION: " + clean_name + " in " + filename + 
+                  " | existing=" + (existing != NULL ? "YES" : "NO") + 
+                  " | protected=" + (is_protected_symbol ? "YES" : "NO") + 
+                  " | forex=" + (is_forex_override ? "YES" : "NO"));
+         }
+         
+         if(existing != NULL && is_protected_symbol && !is_forex_override)
+         {
+            Print("WARNING: Skipping collision for protected currency symbol '" + clean_name + 
+                  "' in " + filename + " (protected by existing currency mapping)");
+            // Don't increment loaded counter for skipped assets
+         }
+         else
+         {
+            if(existing != NULL && !is_forex_override)
+            {
+               Print("DEBUG: Overwriting existing mapping for '" + clean_name + "' with " + asset_class_name + " asset");
+            }
+            g_assetSymbolMap.hPutLong(clean_name, asset_id);
+            loaded++;
+            
+            // Debug output for key currencies
+            if(name == "Euro" || name == "US Dollar" || clean_name == "EUR" || clean_name == "USD")
+            {
+               Print("DEBUG: " + name + " (" + clean_name + ") -> Class: " + IntegerToString(asset_class_id) + 
+                     ", BTR ID: " + IntegerToString(btr_id) + ", Asset ID: 0x" + IntegerToString(asset_id, 16));
+            }
+         }
+         
+         // Store aliases with collision detection
+         if(StringLen(aliases) > 0)
+         {
+            string alias_array[];
+            int alias_count = StringSplit(aliases, '|', alias_array);
+            for(int j = 0; j < alias_count; j++)
+            {
+               string clean_alias;
+               CleanupSymbol(alias_array[j], clean_alias);
+               if(StringLen(clean_alias) > 0)
+               {
+                  // Apply same collision protection for aliases
+                  HashLong* existing_alias = (HashLong*)g_assetSymbolMap.hGet(clean_alias);
+                  bool is_protected_alias = (clean_alias == "EUR" || clean_alias == "USD" || clean_alias == "GBP" || 
+                                           clean_alias == "JPY" || clean_alias == "CHF" || clean_alias == "CAD" || 
+                                           clean_alias == "AUD" || clean_alias == "NZD");
+                  
+                  if(existing_alias != NULL && is_protected_alias && !is_forex_override)
+                  {
+                     Print("WARNING: Skipping alias collision for protected currency symbol '" + clean_alias + 
+                           "' (" + alias_array[j] + ") in " + filename);
+                  }
+                  else
+                  {
+                     g_assetSymbolMap.hPutLong(clean_alias, asset_id);
+                     
+                     // Debug output for key aliases
+                     if(clean_alias == "EUR" || clean_alias == "USD")
+                     {
+                        Print("DEBUG: Alias " + alias_array[j] + " (" + clean_alias + ") -> Asset ID: 0x" + IntegerToString(asset_id, 16));
+                     }
+                  }
+               }
+            }
          }
       }
    }
    
-   // Remove "ZERO" suffix
-   if(len > 4)
-   {
-      string suffix4 = StringSubstr(target, len-4, 4);
-      if(suffix4 == "ZERO")
-      {
-         target = StringSubstr(target, 0, len-4);
-         len = StringLen(target);
-      }
-   }
-   
-   // Remove "ECN" suffix
-   if(len > 3)
-   {
-      string suffix3 = StringSubstr(target, len-3, 3);
-      if(suffix3 == "ECN")
-      {
-         target = StringSubstr(target, 0, len-3);
-         len = StringLen(target);
-      }
-   }
-   
-   // Apply aliases
-   target = Unalias(target);
+   Print("Loaded " + IntegerToString(loaded) + " assets from " + filename + " (class: " + asset_class_name + ")");
+   return loaded > 0;
 }
 
-// Handle common symbol aliases
-string Unalias(string symbol)
+// Load market providers
+bool LoadMarketProviders()
 {
-   // Gold/Silver aliases
-   if(symbol == "GOLD" || symbol == "XAU") return "XAUUSD";
-   if(symbol == "SILVER" || symbol == "XAG") return "XAGUSD";
+   CSVData csv_data;
+   if(!LoadCSVData("ids/market-providers.csv", csv_data)) return false;
    
-   // Oil aliases
-   if(symbol == "OIL" || symbol == "CRUDE") return "WTIUSD";
-   if(symbol == "BRENT") return "BRENTUSD";
+   int btr_id_col = GetColumnIndex(csv_data, "btr_id");
+   int name_col = GetColumnIndex(csv_data, "name");
    
-   // Crypto aliases
-   if(symbol == "BTC") return "BTCUSD";
-   if(symbol == "ETH") return "ETHUSD";
-   
-   // Ensure forex pairs have 6 characters
-   if(StringLen(symbol) == 6)
+   if(btr_id_col < 0 || name_col < 0)
    {
-      // Check if it's a valid forex pair format
-      string base = StringSubstr(symbol, 0, 3);
-      string quote = StringSubstr(symbol, 3, 3);
+      Print("ERROR: market-providers.csv missing required columns");
+      return false;
+   }
+   
+   int loaded = 0;
+   for(int i = 0; i < csv_data.rows; i++)
+   {
+      string btr_id_str = GetCellByIndex(csv_data, i, btr_id_col);
+      string name = GetCellByIndex(csv_data, i, name_col);
       
-      // Common currency validation
-      if(IsValidCurrency(base) && IsValidCurrency(quote))
-         return symbol;
+      if(StringLen(btr_id_str) > 0 && StringLen(name) > 0)
+      {
+         uint btr_id = (uint)StringToInteger(btr_id_str);
+         StringToUpper(name);
+         g_marketProviderCache.hPutLong(name, btr_id);
+         loaded++;
+      }
    }
    
-   return symbol;
+   Print("Loaded " + IntegerToString(loaded) + " market providers");
+   return loaded > 0;
 }
 
-// Basic currency validation
-bool IsValidCurrency(string currency)
-{
-   // Check against BTR currency system
-   return GetBTRCurrencyFromISO(currency) > 0;
-}
+//+------------------------------------------------------------------+
+//| Initialization Functions                                         |
+//+------------------------------------------------------------------+
 
-// Get symbol cache size
-int GetSymbolCacheSize()
+void InitializeBTRCaches()
 {
    if(g_symbolCache == NULL)
-      return 0;
-   return g_symbolCache.getCount();
+      g_symbolCache = new Hash(53, true);
+   if(g_assetSymbolMap == NULL)
+      g_assetSymbolMap = new Hash(503, true); // Larger for all assets
+   if(g_marketProviderCache == NULL)
+      g_marketProviderCache = new Hash(53, true);
+   if(g_assetClassMap == NULL)
+      g_assetClassMap = new Hash(17, true);
+   if(g_instrumentTypeMap == NULL)
+      g_instrumentTypeMap = new Hash(17, true);
 }
 
-// Cleanup symbol cache (call on deinit)
-void CleanupSymbolCache()
+bool InitializeBTRAssets()
 {
-   if(g_symbolCache != NULL)
+   if(g_assetsInitialized) return true;
+   
+   Print("=== Initializing BTR Asset Mappings ===");
+   
+   InitializeBTRCaches();
+   
+   bool success = true;
+   success &= LoadAssetClasses();
+   success &= LoadInstrumentTypes();
+   
+   // Load all asset types using dynamic mapping
+   for(int i = 0; i < ArraySize(g_assetFileMappings); i++)
    {
-      delete g_symbolCache;
-      g_symbolCache = NULL;
+      success &= LoadAssetType(g_assetFileMappings[i].filename, g_assetFileMappings[i].asset_class_name);
    }
+   
+   success &= LoadMarketProviders();
+   
+   if(success)
+   {
+      g_assetsInitialized = true;
+      Print("=== BTR Asset Mappings Initialized Successfully ===");
+      Print("Total asset symbols loaded: " + IntegerToString(g_assetSymbolMap.getCount()));
+   }
+   else
+   {
+      Print("=== ERROR: Failed to initialize BTR Asset Mappings ===");
+   }
+   
+   return success;
 }
 
 //+------------------------------------------------------------------+
-//| Symbol Parsing Functions                                        |
+//| Symbol Cleanup and Caching                                      |
 //+------------------------------------------------------------------+
 
-// Parse MQL4 forex symbol to BTR currency pair (with symbol cleanup)
-void ParseForexSymbol(string symbol, uint &base_currency, uint &quote_currency)
+// Get cleaned symbol (caching layer)
+string GetCleanedSymbol(string symbol)
 {
-   // Clean symbol first
+   if(g_symbolCache == NULL) InitializeBTRCaches();
+
+   HashString* cached = (HashString*)g_symbolCache.hGet(symbol);
+   if(cached != NULL) return cached.getVal();
+
+   string cleaned_symbol;
+   CleanupSymbol(symbol, cleaned_symbol);
+
+   g_symbolCache.hPutString(symbol, cleaned_symbol);
+   return cleaned_symbol;
+}
+
+//+------------------------------------------------------------------+
+//| Unified Asset Resolution Functions                               |
+//+------------------------------------------------------------------+
+
+// Get BTR asset ID from symbol (unified resolver)
+ulong GetBTRAssetFromSymbol(const string symbol)
+{
+   if(!g_assetsInitialized) InitializeBTRAssets();
+   
    string cleaned = GetCleanedSymbol(symbol);
    
-   if(StringLen(cleaned) < 6)
-   {
-      base_currency = 0;
-      quote_currency = 0;
-      return;
-   }
+   HashLong* asset = (HashLong*)g_assetSymbolMap.hGet(cleaned);
+   if(asset != NULL) return asset.getVal();
    
-   string base = StringSubstr(cleaned, 0, 3);
-   string quote = StringSubstr(cleaned, 3, 3);
-   
-   base_currency = GetBTRCurrencyFromISO(base);
-   quote_currency = GetBTRCurrencyFromISO(quote);
+   return 0; // Unknown asset
 }
 
-// Generate MITCH ticker ID for forex pair (proper specification format)
+// Parse symbol into base and quote assets (enhanced for all asset types)
+bool ParseSymbolAssets(string symbol, ulong &base_asset, ulong &quote_asset)
+{
+   string cleaned = GetCleanedSymbol(symbol);
+   
+   // Try forex pair parsing first (6 characters)
+   if(StringLen(cleaned) == 6)
+   {
+      string base_symbol = StringSubstr(cleaned, 0, 3);
+      string quote_symbol = StringSubstr(cleaned, 3, 3);
+      
+      base_asset = GetBTRAssetFromSymbol(base_symbol);
+      quote_asset = GetBTRAssetFromSymbol(quote_symbol);
+      
+      if(base_asset > 0 && quote_asset > 0)
+      {
+         // Debug output commented out to reduce test log verbosity
+         // Print("DEBUG: Parsed forex pair " + cleaned + " -> Base: " + base_symbol + 
+         //       " (0x" + IntegerToString(base_asset, 16) + "), Quote: " + quote_symbol + 
+         //       " (0x" + IntegerToString(quote_asset, 16) + ")");
+         return true;
+      }
+   }
+   
+   // Try as single asset (commodity, index, etc.)
+   base_asset = GetBTRAssetFromSymbol(cleaned);
+   if(base_asset > 0)
+   {
+      // Default to USD as quote asset
+      quote_asset = GetBTRAssetFromSymbol("USD");
+      if(quote_asset == 0)
+      {
+         // Fallback: Create USD asset ID manually (Forex class=3, USD ID=461)
+         // Use hardcoded Forex class=3 to avoid dependency issues during initialization
+         quote_asset = (3 << 16) | 461;  // 0x301CD
+         // Debug output commented out to reduce test log verbosity
+         // Print("DEBUG: Created fallback USD asset ID: 0x" + IntegerToString(quote_asset, 16) + " (should be 0x301CD)");
+      }
+      
+      // Debug output commented out to reduce test log verbosity
+      // Print("DEBUG: Parsed single asset " + cleaned + " -> Base: 0x" + IntegerToString(base_asset, 16) + 
+      //       ", Quote: USD (0x" + IntegerToString(quote_asset, 16) + ")");
+      return true;
+   }
+   
+   Print("DEBUG: Failed to parse symbol: " + cleaned);
+   return false;
+}
+
+// Generate MITCH ticker ID (fully dynamic)
 ulong GetMitchTickerID(string symbol)
 {
-   uint base_currency, quote_currency;
-   ParseForexSymbol(symbol, base_currency, quote_currency);
+   ulong base_asset, quote_asset;
    
-   if(base_currency == 0 || quote_currency == 0)
+   if(ParseSymbolAssets(symbol, base_asset, quote_asset))
    {
-      // Fallback to hash-based ID for unknown currencies
-      ulong hash = 0;
+      // Use dynamic instrument type lookup (default to SPOT)
+      uint spot_inst_type = GetInstrumentTypeID("Spot");
+      if(spot_inst_type == 0) spot_inst_type = 0; // Fallback to 0 if not found
+      
+      ulong sub_type = 0;
+      
+      // MITCH Ticker ID Format (64 bits):
+      // Bits 63-60: Instrument Type (4 bits)
+      // Bits 59-40: Base Asset (20 bits) - 4 bits class + 16 bits ID
+      // Bits 39-20: Quote Asset (20 bits) - 4 bits class + 16 bits ID
+      // Bits 19-0:  Sub-Type (20 bits)
+      
+      // The base_asset and quote_asset are already 20-bit values (class + ID)
+      // We need to mask them to ensure they fit in 20 bits
+      ulong base_20bit = base_asset & 0xFFFFF;   // 20 bits
+      ulong quote_20bit = quote_asset & 0xFFFFF; // 20 bits
+      
+      ulong ticker_id = ((ulong)spot_inst_type << 60) |
+                        (base_20bit << 40) |
+                        (quote_20bit << 20) |
+                        sub_type;
+      
+      // Debug output for key symbols (only for initial validation)
+      // Commented out to reduce test log verbosity
+      /*
       string cleaned = GetCleanedSymbol(symbol);
-      for(int i = 0; i < StringLen(cleaned); i++)
+      if(cleaned == "EURUSD" || cleaned == "EUR" || cleaned == "USD")
       {
-         hash = hash * 31 + StringGetCharacter(cleaned, i);
+         Print("DEBUG: " + symbol + " -> " + cleaned);
+         Print("  Instrument Type: 0x" + IntegerToString(spot_inst_type, 16));
+         Print("  Base Asset: 0x" + IntegerToString(base_asset, 16) + " (20-bit: 0x" + IntegerToString(base_20bit, 16) + ")");
+         Print("  Quote Asset: 0x" + IntegerToString(quote_asset, 16) + " (20-bit: 0x" + IntegerToString(quote_20bit, 16) + ")");
+         Print("  Sub-Type: 0x" + IntegerToString(sub_type, 16));
+         Print("  Final Ticker ID: 0x" + IntegerToString(ticker_id, 16) + " (" + IntegerToString(ticker_id) + ")");
       }
-      return (((ulong)BTR_INST_SPOT << 60) | 
-              ((ulong)BTR_ASSET_FOREX << 56) | 
-              (hash & 0xFFFFFFFFFFFFFF));
+      */
+      
+      return ticker_id;
    }
    
-   // MITCH Format: [4-bit inst type][20-bit base asset][20-bit quote asset][20-bit sub-type]
-   // Per specification: Base and Quote assets are the currency IDs directly
-   // EUR = 111 = 0x6F, USD = 461 = 0x1CD
-   
-   ulong base_asset = base_currency & 0xFFFFF;   // 20-bit base asset (currency ID)
-   ulong quote_asset = quote_currency & 0xFFFFF; // 20-bit quote asset (currency ID)
-   ulong sub_type = 0; // For spot forex, sub-type is 0
-   
-   return (((ulong)BTR_INST_SPOT << 60) |     // 4-bit instrument type
-           (base_asset << 40) |                // 20-bit base asset
-           (quote_asset << 20) |               // 20-bit quote asset
-           sub_type);                          // 20-bit sub-type
+   // Fallback hash logic for unknown symbols
+   ulong hash = 0;
+   string cleaned = GetCleanedSymbol(symbol);
+   for(int i = 0; i < StringLen(cleaned); i++)
+      hash = hash * 31 + StringGetCharacter(cleaned, i);
+
+   // Use dynamic lookups for fallback
+   uint spot_inst_type = GetInstrumentTypeID("Spot");
+   uint forex_class_id = GetAssetClassID("Forex");
+   if(spot_inst_type == 0) spot_inst_type = 0;
+   if(forex_class_id == 0) forex_class_id = 3; // Last resort fallback
+
+   return ((ulong)spot_inst_type << 60) |
+          ((ulong)forex_class_id << 56) | 
+          (hash & 0x00FFFFFFFFFFFFFF);
 }
 
-// Legacy function for backward compatibility
-ulong GenerateBTRForexTickerID(string symbol)
+//+------------------------------------------------------------------+
+//| Market Provider Functions                                        |
+//+------------------------------------------------------------------+
+
+// Get BTR market provider ID from broker name
+uint GetBTRMarketProviderFromBroker(const string broker_name)
 {
-   return GetMitchTickerID(symbol);
+   if(!g_assetsInitialized) InitializeBTRAssets();
+   
+   string name = broker_name;
+   StringToUpper(name);
+   
+   HashLong* cached = (HashLong*)g_marketProviderCache.hGet(name);
+   if(cached != NULL) return (uint)cached.getVal();
+   
+   return 0; // Unknown market provider
+}
+
+// Get current market provider ID from AccountCompany()
+uint GetCurrentMarketProviderID()
+{
+   return GetBTRMarketProviderFromBroker(AccountCompany());
 }
 
 //+------------------------------------------------------------------+
@@ -461,9 +514,9 @@ ulong GenerateBTRForexTickerID(string symbol)
 //+------------------------------------------------------------------+
 
 // Extract components from MITCH ticker ID
-uchar GetMitchInstrumentType(ulong ticker_id)
+uint GetMitchInstrumentType(ulong ticker_id)
 {
-   return (uchar)((ticker_id >> 60) & 0xF);
+   return (uint)((ticker_id >> 60) & 0xF);
 }
 
 ulong GetMitchBaseAsset(ulong ticker_id)
@@ -481,34 +534,32 @@ ulong GetMitchSubType(ulong ticker_id)
    return ticker_id & 0xFFFFF; // 20 bits
 }
 
-// Extract currency IDs from asset fields  
-uint GetCurrencyFromMitchAsset(ulong asset)
+// Extract asset class and ID from asset field  
+uint GetAssetClassFromMitchAsset(ulong asset)
 {
-   return (uint)(asset & 0xFFFFF); // Full 20-bit asset is now the currency ID
+   return (uint)((asset >> 16) & 0xF); // Upper 4 bits of the 20-bit asset
 }
 
-uchar GetAssetClassFromMitchAsset(ulong asset)
+uint GetAssetIDFromMitchAsset(ulong asset)
 {
-   return BTR_ASSET_FOREX; // All assets in our system are forex (0x3)
+   return (uint)(asset & 0xFFFF); // Lower 16 bits of the 20-bit asset
 }
 
 // Analyze MITCH ticker ID
 string AnalyzeMitchTickerID(ulong ticker_id)
 {
-   uchar inst_type = GetMitchInstrumentType(ticker_id);
+   uint inst_type = GetMitchInstrumentType(ticker_id);
    ulong base_asset = GetMitchBaseAsset(ticker_id);
    ulong quote_asset = GetMitchQuoteAsset(ticker_id);
    ulong sub_type = GetMitchSubType(ticker_id);
    
-   uint base_currency = GetCurrencyFromMitchAsset(base_asset);
-   uint quote_currency = GetCurrencyFromMitchAsset(quote_asset);
+   uint base_class = GetAssetClassFromMitchAsset(base_asset);
+   uint quote_class = GetAssetClassFromMitchAsset(quote_asset);
+   uint base_id = GetAssetIDFromMitchAsset(base_asset);
+   uint quote_id = GetAssetIDFromMitchAsset(quote_asset);
    
-   string base_iso = GetISOFromBTRCurrency(base_currency);
-   string quote_iso = GetISOFromBTRCurrency(quote_currency);
-   
-   return StringFormat("MITCH ID: 0x%016llX | Type: 0x%X | %s/%s | Base: %s(%d) | Quote: %s(%d) | Sub: 0x%05X",
-                       ticker_id, inst_type, base_iso, quote_iso, 
-                       base_iso, base_currency, quote_iso, quote_currency, sub_type);
+   return StringFormat("MITCH ID: 0x%016llX | Type: 0x%X | Base: 0x%05X(class:0x%X, id:%d) | Quote: 0x%05X(class:0x%X, id:%d) | Sub: 0x%05X",
+                       ticker_id, inst_type, base_asset, base_class, base_id, quote_asset, quote_class, quote_id, sub_type);
 }
 
 // Analyze symbol cleanup (for debugging)
@@ -520,23 +571,87 @@ string AnalyzeSymbolCleanup(string original_symbol)
    return StringFormat("%s -> %s | %s", original_symbol, cleaned, AnalyzeMitchTickerID(ticker_id));
 }
 
-// Legacy functions for backward compatibility
-uchar GetInstrumentType(ulong ticker_id)
+//+------------------------------------------------------------------+
+//| Utility Functions                                               |
+//+------------------------------------------------------------------+
+
+// Get symbol cache size
+int GetSymbolCacheSize()
+{
+   if(g_symbolCache == NULL) return 0;
+   return g_symbolCache.getCount();
+}
+
+// Get asset mapping size
+int GetAssetMappingSize()
+{
+   if(g_assetSymbolMap == NULL) return 0;
+   return g_assetSymbolMap.getCount();
+}
+
+// Cleanup caches
+void CleanupBTRCaches()
+{
+   if(g_symbolCache != NULL)
+   {
+      delete g_symbolCache;
+      g_symbolCache = NULL;
+   }
+   if(g_assetSymbolMap != NULL)
+   {
+      delete g_assetSymbolMap;
+      g_assetSymbolMap = NULL;
+   }
+   if(g_marketProviderCache != NULL)
+   {
+      delete g_marketProviderCache;
+      g_marketProviderCache = NULL;
+   }
+   if(g_assetClassMap != NULL)
+   {
+      delete g_assetClassMap;
+      g_assetClassMap = NULL;
+   }
+   if(g_instrumentTypeMap != NULL)
+   {
+      delete g_instrumentTypeMap;
+      g_instrumentTypeMap = NULL;
+   }
+   g_assetsInitialized = false;
+}
+
+//+------------------------------------------------------------------+
+//| Legacy Compatibility Functions                                   |
+//+------------------------------------------------------------------+
+
+// Legacy function for backward compatibility
+ulong GenerateBTRForexTickerID(string symbol)
+{
+   return GetMitchTickerID(symbol);
+}
+
+uint GetInstrumentType(ulong ticker_id)
 {
    return GetMitchInstrumentType(ticker_id);
 }
 
-uchar GetAssetClass(ulong ticker_id)
+uint GetAssetClass(ulong ticker_id)
 {
-   return BTR_ASSET_FOREX;
+   return GetAssetClassFromMitchAsset(GetMitchBaseAsset(ticker_id));
 }
 
 uint GetBaseCurrency(ulong ticker_id)
 {
-   return GetCurrencyFromMitchAsset(GetMitchBaseAsset(ticker_id));
+   return GetAssetIDFromMitchAsset(GetMitchBaseAsset(ticker_id));
 }
 
 uint GetQuoteCurrency(ulong ticker_id)
 {
-   return GetCurrencyFromMitchAsset(GetMitchQuoteAsset(ticker_id));
+   return GetAssetIDFromMitchAsset(GetMitchQuoteAsset(ticker_id));
+}
+
+// Basic asset validation
+bool IsValidAsset(string symbol)
+{
+   return GetBTRAssetFromSymbol(symbol) > 0;
 } 

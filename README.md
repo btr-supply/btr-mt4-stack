@@ -430,6 +430,7 @@ make test-all
 ### Test Scripts
 - **BTRRedisTest.mq4**: Redis connectivity and operations test
 - **BTRMitchTest.mq4**: Complete MITCH protocol test suite (symbol cleanup, ID generation, serialization, performance)
+- **BTRRedisMitchTest.mq4**: EURUSD ticker streaming test (publishes 20 MITCH binary messages every second)
 
 ### Monitor Redis Activity
 ```bash
@@ -441,6 +442,81 @@ redis-cli --user username --pass password subscribe 0100000000000000
 
 # View active channels
 redis-cli --user username --pass password pubsub channels
+```
+
+### Subscribe to MITCH Binary Test Data
+
+The **BTRRedisMitchTest.mq4** script publishes EURUSD ticker data to a hex channel based on the MITCH ticker ID. To subscribe to this real-time binary data stream:
+
+#### Method 1: Using Hex Channel Name (Recommended)
+```bash
+# Subscribe using the hex string channel name
+redis-cli SUBSCRIBE [hex_channel_id]
+
+# Example for EURUSD ticker ID 0x03006F301CD00000:
+redis-cli SUBSCRIBE 03006f301cd00000
+```
+
+#### Method 2: Using Binary Channel Name (Advanced)
+```bash
+# Subscribe using binary channel name with ANSI-C quoting
+redis-cli SUBSCRIBE $'\x03\x00\x6f\x00\x1c\xd0\x00\x00'
+
+# This is equivalent to the hex method but uses raw bytes
+```
+
+#### Real-Time Monitoring
+```bash
+# Monitor the specific EURUSD channel (0x03006f301cd00000)
+redis-cli --user username --pass password subscribe $'\x03\x00\x6f\x30\x1c\xd0\x00\x00'
+
+# Or monitor all MITCH channels with pattern matching
+redis-cli --user username --pass password psubscribe '*'
+
+# View published message details
+redis-cli --user username --pass password monitor | grep PUBLISH
+```
+
+#### Binary Data Handling
+
+When you subscribe to the MITCH binary channel, you'll receive:
+- **Channel Name**: The hex ticker ID (e.g., `03006f301cd00000`)  
+- **Message Size**: Exactly 40 bytes of binary data
+- **Format**: MITCH binary protocol (8-byte header + 32-byte ticker body)
+- **Frequency**: Every second for 20 iterations when running BTRRedisMitchTest.mq4
+
+**Important Notes:**
+- The `redis-cli` will display binary data as escaped ASCII sequences
+- Each message contains bid/ask prices and volumes in binary format
+- Use programming languages (Python, Node.js, etc.) for proper binary parsing
+- Binary channels are case-sensitive and must match exactly
+
+#### Example Python Subscriber
+```python
+import redis
+import struct
+
+r = redis.Redis(host='localhost', port=6379, db=0)
+pubsub = r.pubsub()
+
+# Subscribe to EURUSD channel (example ticker ID)
+pubsub.subscribe('03006f301cd00000')
+
+for message in pubsub.listen():
+    if message['type'] == 'message':
+        # Parse 40-byte MITCH binary message
+        data = message['data']
+        if len(data) == 40:
+            # Parse header (8 bytes) + ticker body (32 bytes)
+            header = data[:8]
+            ticker_body = data[8:]
+            
+            # Extract ticker data (example parsing)
+            ticker_id = struct.unpack('>Q', ticker_body[:8])[0]
+            bid_price = struct.unpack('>d', ticker_body[8:16])[0]
+            ask_price = struct.unpack('>d', ticker_body[16:24])[0]
+            
+            print(f"EURUSD: Bid={bid_price:.5f}, Ask={ask_price:.5f}")
 ```
 
 ## 📋 Build System

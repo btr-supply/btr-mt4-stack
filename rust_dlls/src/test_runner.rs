@@ -2,7 +2,6 @@ use std::os::raw::{c_int, c_uchar};
 use libloading::Library;
 use std::fs;
 use std::env;
-use url::Url;
 
 // Redis DLL Test Runner
 // Environment variables (optional):

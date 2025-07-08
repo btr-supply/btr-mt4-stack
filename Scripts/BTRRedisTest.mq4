@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//|                                                    BTRRedisTest.mq4 |
+//|                                                 BTRRedisTest.mq4 |
 //| Copyright BTR Supply                                             |
 //| https://btr.supply                                               |
 //+------------------------------------------------------------------+
@@ -20,7 +20,7 @@ input bool TestCacheStatistics = false;
 
 //+------------------------------------------------------------------+
 //| Build dynamic connection string with credentials                 |
-//| Logic matches construct_redis_url() from test_runner.rs         |
+//| Logic matches construct_redis_url() from test_runner.rs          |
 //+------------------------------------------------------------------+
 string BuildConnectionString()
 {
