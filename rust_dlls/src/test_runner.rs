@@ -6,8 +6,6 @@ use std::env;
 // Redis DLL Test Runner
 // Environment variables (optional):
 //   REDIS_URL - Redis connection URL (default: redis://127.0.0.1:6379)
-//   REDIS_USER - Redis username (default: empty)
-//   REDIS_PASSWORD - Redis password (default: empty)
 
 // Test result tracking
 struct TestResults {
@@ -24,18 +22,18 @@ impl TestResults {
             failed_tests: Vec::new(),
         }
     }
-    
+
     fn pass(&mut self, test_name: &str) {
         self.passed += 1;
         println!("✅ {}", test_name);
     }
-    
+
     fn fail(&mut self, test_name: &str) {
         self.failed += 1;
         self.failed_tests.push(test_name.to_string());
         println!("❌ {}", test_name);
     }
-    
+
     fn assert_condition(&mut self, condition: bool, test_name: &str) {
         if condition {
             self.pass(test_name);
@@ -43,14 +41,14 @@ impl TestResults {
             self.fail(test_name);
         }
     }
-    
+
     fn summary(&self) -> bool {
         let total = self.passed + self.failed;
         println!("\n=== Test Summary ===");
         println!("Total tests: {}", total);
         println!("Passed: {}", self.passed);
         println!("Failed: {}", self.failed);
-        
+
         if self.failed > 0 {
             println!("\nFailed tests:");
             for test in &self.failed_tests {
@@ -96,7 +94,7 @@ fn load_env_file() {
             if line.is_empty() || line.starts_with('#') {
                 continue;
             }
-            
+
             if let Some(pos) = line.find('=') {
                 let key = &line[..pos];
                 let value = &line[pos + 1..];
@@ -114,7 +112,7 @@ fn construct_redis_url() -> String {
     let base_url = env::var("REDIS_URL").unwrap_or("redis://localhost:6379".to_string());
     let user = env::var("REDIS_USER").unwrap_or("".to_string());
     let password = env::var("REDIS_PASSWORD").unwrap_or("".to_string());
-    
+
     if user.is_empty() || password.is_empty() {
         base_url
     } else {
@@ -156,7 +154,7 @@ fn build_mget_payload(keys: &[&str]) -> Vec<u8> {
 fn parse_mget_response(buffer: &[u8]) -> Result<Vec<Option<String>>, &'static str> {
     let mut values = Vec::new();
     let mut offset = 0;
-    
+
     while offset + 4 <= buffer.len() {
         let len_bytes = match buffer[offset..offset + 4].try_into() {
             Ok(bytes) => bytes,
@@ -164,7 +162,7 @@ fn parse_mget_response(buffer: &[u8]) -> Result<Vec<Option<String>>, &'static st
         };
         let len = u32::from_be_bytes(len_bytes) as usize;
         offset += 4;
-        
+
         if len == 0 {
             // NULL value
             values.push(None);
@@ -177,7 +175,7 @@ fn parse_mget_response(buffer: &[u8]) -> Result<Vec<Option<String>>, &'static st
             return Err("Incomplete value data");
         }
     }
-    
+
     Ok(values)
 }
 
@@ -196,10 +194,10 @@ macro_rules! load_symbol {
 
 fn main() {
     println!("=== Redis DLL Test Runner (Raw Bytes) ===");
-    
+
     // Load environment variables from .env file
     load_env_file();
-    
+
     let mut results = TestResults::new();
 
     let lib_path = "../Libraries/redis_client.dll";
@@ -215,30 +213,30 @@ fn main() {
             std::process::exit(1);
         }
     };
-    
+
     // Test 1: DLL Exports
     println!("\n--- Test 1: DLL Exports ---");
     test_dll_exports(&lib, &mut results);
-    
+
     // Test 2: Byte Echo Function
     println!("\n--- Test 2: Byte Echo Function ---");
     test_byte_echo(&lib, &mut results);
-    
+
     // Test 3: Connection Functions
     println!("\n--- Test 3: Connection Functions ---");
     test_connection_functions(&lib, &mut results);
-    
+
     // Test 4: Auth Function (separate from connection)
     println!("\n--- Test 4: Auth Function ---");
     test_auth_function(&lib, &mut results);
-    
+
     // Test 5: Redis Operations
     println!("\n--- Test 5: Redis Operations ---");
     test_redis_operations(&lib, &mut results);
-    
+
     // Final summary
     let all_passed = results.summary();
-    
+
     if all_passed {
         println!("\n🎉 All tests completed successfully! 🎉");
         std::process::exit(0);
@@ -253,7 +251,7 @@ fn test_dll_exports(lib: &Library, results: &mut TestResults) {
         "redis_test_byte_echo", "redis_connect", "redis_auth", "redis_disconnect", "redis_is_connected", "redis_ping",
         "redis_set", "redis_set_ex", "redis_get", "redis_mset", "redis_mget", "redis_publish"
     ];
-    
+
     for export in &exports {
         match unsafe { lib.get::<*const ()>(export.as_bytes()) } {
             Ok(_) => results.pass(&format!("Export found: {}", export)),
@@ -264,14 +262,14 @@ fn test_dll_exports(lib: &Library, results: &mut TestResults) {
 
 fn test_byte_echo(lib: &Library, results: &mut TestResults) {
     let echo_fn = load_symbol!(lib, results, "redis_test_byte_echo", TestByteEchoFn);
-    
+
     let test_string = "Hello Raw Bytes!";
     let test_bytes = test_string.as_bytes();
     let mut output_buffer = vec![0u8; 256];
-    
+
     unsafe {
         let result = echo_fn(test_bytes.as_ptr(), test_bytes.len() as c_int, output_buffer.as_mut_ptr(), 256);
-        
+
         if result > 0 {
             let output_str = String::from_utf8_lossy(&output_buffer[..result as usize]);
             if test_string == output_str {
@@ -290,27 +288,24 @@ fn test_connection_functions(lib: &Library, results: &mut TestResults) {
     let is_connected_fn = load_symbol!(lib, results, "redis_is_connected", IsConnectedFn);
     let ping_fn = load_symbol!(lib, results, "redis_ping", PingFn);
     let disconnect_fn = load_symbol!(lib, results, "redis_disconnect", DisconnectFn);
-    
+
     unsafe {
         // Test connection with credentials in URL (via redis_connect)
         let redis_url = construct_redis_url();
         let conn_bytes = redis_url.as_bytes();
-        
+
         println!("🔍 Environment variables:");
-        println!("  REDIS_URL: {:?}", env::var("REDIS_URL"));
-        println!("  REDIS_USER: {:?}", env::var("REDIS_USER"));
-        println!("  REDIS_PASSWORD: {:?}", env::var("REDIS_PASSWORD"));
-        println!("📡 Constructed Redis URL: {}", redis_url);
+        println!("📡 Redis URL: {}", redis_url);
         println!("📏 URL bytes length: {}", conn_bytes.len());
-        
+
         let connect_result = connect_fn(conn_bytes.as_ptr(), conn_bytes.len() as c_int);
         println!("📋 Connect function returned: {}", connect_result);
         results.assert_condition(connect_result == 1, "Redis connection");
-        
+
         // Test is_connected
         let connected = is_connected_fn();
         results.assert_condition(connected == 1, "Connection state check");
-        
+
         // Test ping (only if connected)
         if connected == 1 {
             let ping_result = ping_fn();
@@ -318,11 +313,11 @@ fn test_connection_functions(lib: &Library, results: &mut TestResults) {
         } else {
             results.fail("Ping test (skipped - not connected)");
         }
-        
+
         // Test disconnect
         let disconnect_result = disconnect_fn();
         results.assert_condition(disconnect_result == 1, "Disconnect");
-        
+
         // Test is_connected after disconnect
         let connected_after = is_connected_fn();
         results.assert_condition(connected_after == 0, "Connection state after disconnect");
@@ -334,34 +329,34 @@ fn test_auth_function(lib: &Library, results: &mut TestResults) {
     let auth_fn = load_symbol!(lib, results, "redis_auth", AuthFn);
     let disconnect_fn = load_symbol!(lib, results, "redis_disconnect", DisconnectFn);
     let ping_fn = load_symbol!(lib, results, "redis_ping", PingFn);
-    
+
     unsafe {
         // Only test auth if credentials are provided
         if let (Ok(username), Ok(password)) = (env::var("REDIS_USER"), env::var("REDIS_PASSWORD")) {
             // Connect using URL without credentials
             let redis_url_no_auth = construct_redis_url_no_auth();
             let conn_bytes = redis_url_no_auth.as_bytes();
-            
+
             println!("🔐 Testing authentication separately from connection:");
             println!("  Connection URL (no auth): {}", redis_url_no_auth);
             println!("  Username: '{}' ({} bytes)", username, username.len());
             println!("  Password: '{}' ({} bytes)", password, password.len());
-            
+
             let connect_result = connect_fn(conn_bytes.as_ptr(), conn_bytes.len() as c_int);
-            
+
             if connect_result == 1 {
                 // Now test auth function
                 let username_bytes = username.as_bytes();
                 let password_bytes = password.as_bytes();
-                
+
                 let auth_result = auth_fn(
                     username_bytes.as_ptr(), username_bytes.len() as c_int,
                     password_bytes.as_ptr(), password_bytes.len() as c_int
                 );
-                
+
                 println!("📋 Auth function returned: {}", auth_result);
                 results.assert_condition(auth_result == 1, "Redis authentication");
-                
+
                 // Test that auth worked by trying a ping
                 if auth_result == 1 {
                     let ping_result = ping_fn();
@@ -369,7 +364,7 @@ fn test_auth_function(lib: &Library, results: &mut TestResults) {
                 } else {
                     results.fail("Ping after auth (skipped - auth failed)");
                 }
-                
+
                 // Disconnect
                 disconnect_fn();
             } else {
@@ -390,51 +385,51 @@ fn test_redis_operations(lib: &Library, results: &mut TestResults) {
     let mset_fn = load_symbol!(lib, results, "redis_mset", MsetFn);
     let mget_fn = load_symbol!(lib, results, "redis_mget", MgetFn);
     let publish_fn = load_symbol!(lib, results, "redis_publish", PublishFn);
-    
+
     unsafe {
         // Connect with credentials
         let redis_url = construct_redis_url();
         let conn_bytes = redis_url.as_bytes();
         let connect_result = connect_fn(conn_bytes.as_ptr(), conn_bytes.len() as c_int);
-        
+
         if connect_result != 1 {
             results.fail("Redis connection for operations");
             println!("⚠️  Skipping Redis operations tests - connection failed");
             return;
         }
-        
+
         // Test SET
         let key = "test_key";
         let value = "test_value";
         let key_bytes = key.as_bytes();
         let value_bytes = value.as_bytes();
-        
+
         let set_result = set_fn(
             key_bytes.as_ptr(), key_bytes.len() as c_int,
             value_bytes.as_ptr(), value_bytes.len() as c_int
         );
         results.assert_condition(set_result == 1, "Redis SET operation");
-        
+
         // Test SETEX
         let key_ex = "test_key_ex";
         let value_ex = "test_value_ex";
         let key_ex_bytes = key_ex.as_bytes();
         let value_ex_bytes = value_ex.as_bytes();
-        
+
         let set_ex_result = set_ex_fn(
             key_ex_bytes.as_ptr(), key_ex_bytes.len() as c_int,
             value_ex_bytes.as_ptr(), value_ex_bytes.len() as c_int,
             60
         );
         results.assert_condition(set_ex_result == 1, "Redis SETEX operation");
-        
+
         // Test GET
         let mut get_buffer = vec![0u8; 1024];
         let get_result = get_fn(
             key_bytes.as_ptr(), key_bytes.len() as c_int,
             get_buffer.as_mut_ptr(), get_buffer.len() as c_int
         );
-        
+
         if get_result > 0 {
             let retrieved_value = String::from_utf8_lossy(&get_buffer[..get_result as usize]);
             if retrieved_value == value {
@@ -445,37 +440,37 @@ fn test_redis_operations(lib: &Library, results: &mut TestResults) {
         } else {
             results.fail("Redis GET operation: No data returned");
         }
-        
+
         // Test PUBLISH
         let channel = "test_channel";
         let message = "Hello Redis!";
         let channel_bytes = channel.as_bytes();
         let message_bytes = message.as_bytes();
-        
+
         let publish_result = publish_fn(
             channel_bytes.as_ptr(), channel_bytes.len() as c_int,
             message_bytes.as_ptr(), message_bytes.len() as c_int
         );
         results.assert_condition(publish_result == 1, "Redis PUBLISH operation");
-        
+
         // Test binary data
         let binary_key = "binary_key";
         let binary_data = vec![0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD, 0xFC];
         let binary_key_bytes = binary_key.as_bytes();
-        
+
         let binary_set_result = set_fn(
             binary_key_bytes.as_ptr(), binary_key_bytes.len() as c_int,
             binary_data.as_ptr(), binary_data.len() as c_int
         );
         results.assert_condition(binary_set_result == 1, "Redis binary SET operation");
-        
+
         // Test binary GET
         let mut binary_get_buffer = vec![0u8; 1024];
         let binary_get_result = get_fn(
             binary_key_bytes.as_ptr(), binary_key_bytes.len() as c_int,
             binary_get_buffer.as_mut_ptr(), binary_get_buffer.len() as c_int
         );
-        
+
         if binary_get_result > 0 {
             let retrieved_data = &binary_get_buffer[..binary_get_result as usize];
             if retrieved_data == binary_data {
@@ -486,24 +481,24 @@ fn test_redis_operations(lib: &Library, results: &mut TestResults) {
         } else {
             results.fail("Redis binary GET operation: No data returned");
         }
-        
+
         // Test binary PUBLISH
         let binary_channel = "binary_channel";
         let binary_channel_bytes = binary_channel.as_bytes();
-        
+
         let binary_publish_result = publish_fn(
             binary_channel_bytes.as_ptr(), binary_channel_bytes.len() as c_int,
             binary_data.as_ptr(), binary_data.len() as c_int
         );
         results.assert_condition(binary_publish_result == 1, "Redis binary PUBLISH operation");
-        
+
         // Test MSET using helper function
         println!("Testing MSET operation...");
         let mset_pairs = [("mtest_key1", "mtest_value1"), ("mtest_key2", "mtest_value2")];
         let mset_payload = build_mset_payload(&mset_pairs);
         let mset_result = mset_fn(mset_payload.as_ptr(), mset_payload.len() as c_int);
         results.assert_condition(mset_result == 1, "Redis MSET operation");
-        
+
         // Test MGET using helper functions
         println!("Testing MGET operation...");
         let mget_keys = ["mtest_key1", "mtest_key2"];
@@ -513,7 +508,7 @@ fn test_redis_operations(lib: &Library, results: &mut TestResults) {
             mget_payload.as_ptr(), mget_payload.len() as c_int,
             mget_buffer.as_mut_ptr(), mget_buffer.len() as c_int
         );
-        
+
         if mget_result > 0 {
             match parse_mget_response(&mget_buffer[..mget_result as usize]) {
                 Ok(values) => {
@@ -548,4 +543,4 @@ fn test_redis_operations(lib: &Library, results: &mut TestResults) {
             results.fail("Redis MGET operation: No data returned");
         }
     }
-} 
+}
