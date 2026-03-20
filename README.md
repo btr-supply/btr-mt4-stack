@@ -235,7 +235,7 @@ int result = RedisConnect("redis://127.0.0.1:6379");
 
 // Create and publish MITCH ticker
 TickerBody ticker;
-ticker.tickerId = GenerateForexTickerID("EURUSD");
+ticker.tickerId = GenerateForexticker_id("EURUSD");
 ticker.bidPrice = MarketInfo("EURUSD", MODE_BID);
 ticker.askPrice = MarketInfo("EURUSD", MODE_ASK);
 
@@ -323,8 +323,6 @@ input string RedisPassword = "your_password";
 ### Environment Variables (Rust Test Runner)
 ```bash
 export REDIS_URL="redis://production-redis.example.com:6379/"
-export REDIS_USER="your_username"
-export REDIS_PASSWORD="your_password"
 ```
 
 ### Network Security
