@@ -15,8 +15,8 @@
 //+------------------------------------------------------------------+
 //| Input parameters                                                 |
 //+------------------------------------------------------------------+
-input string RedisHost = "127.0.0.1";          // Redis server host
-input int RedisPort = 6379;                    // Redis server port
+input string RedisHost = "cache";              // Redis server host eg. 127.0.0.1
+input int RedisPort = 40001;                   // Redis server port eg. 6379
 input string RedisUsername = "";               // Redis username (empty for no auth)
 input string RedisPassword = "";               // Redis password (empty for no auth)
 input string ChannelPrefix = "mitch";          // Redis channel prefix
@@ -37,17 +37,17 @@ string currentSymbol = "";
 int OnInit()
 {
    Print("=== MITCH Redis Integration Demo Starting ===");
-   
+
    // Initialize Redis client
    redis = new RedisClient(RedisHost, RedisPort, RedisUsername, RedisPassword);
-   
+
    if(!redis.Connect())
    {
       Print("ERROR: Failed to connect to Redis server at ", RedisHost, ":", RedisPort);
       delete redis;
       return INIT_FAILED;
    }
-   
+
    // Test Redis connection
    if(!redis.Ping())
    {
@@ -55,25 +55,25 @@ int OnInit()
       delete redis;
       return INIT_FAILED;
    }
-   
+
    Print("✓ Redis connection established successfully");
-   
+
    // Get first symbol from MarketWatch
    currentSymbol = GetFirstMarketWatchSymbol();
-   
+
    if(currentSymbol == "")
    {
       Print("ERROR: No symbols found in MarketWatch!");
       return INIT_FAILED;
    }
-   
+
    Print("Selected symbol: ", currentSymbol);
    Print("Redis channels: ", ChannelPrefix, ":ticker, ", ChannelPrefix, ":binary");
    Print("Update interval: ", UpdateIntervalSeconds, " seconds");
-   
+
    // Initialize first update
    lastUpdateTime = TimeCurrent() - UpdateIntervalSeconds;
-   
+
    return INIT_SUCCEEDED;
 }
 
@@ -83,13 +83,13 @@ int OnInit()
 void OnDeinit(const int reason)
 {
    Print("=== MITCH Redis Demo Stopping ===");
-   
+
    if(redis != NULL)
    {
       redis.Disconnect();
       delete redis;
    }
-   
+
    Print("Total ticker snapshots published: ", tickerSnapshotCount);
 }
 
@@ -112,7 +112,7 @@ void OnTick()
 string GetFirstMarketWatchSymbol()
 {
    int totalSymbols = SymbolsTotal(true);
-   
+
    if(totalSymbols > 0)
    {
       return SymbolName(0, true);
@@ -129,19 +129,19 @@ string GetFirstMarketWatchSymbol()
 void CreateTickerSnapshot(TickerBody &ticker)
 {
    // Generate ticker ID for the symbol
-   ticker.tickerId = GenerateForexTickerID(currentSymbol);
-   
+   ticker.tickerId = GenerateForexticker_id(currentSymbol);
+
    // Get current market data
    ticker.bidPrice = MarketInfo(currentSymbol, MODE_BID);
    ticker.askPrice = MarketInfo(currentSymbol, MODE_ASK);
-   
+
    // Set volumes to 0 as MT4 doesn't provide volume since last snapshot
    ticker.bidVolume = 0;
    ticker.askVolume = 0;
-   
+
    if(EnableLogging)
    {
-      Print("Created ticker snapshot for ", currentSymbol, 
+      Print("Created ticker snapshot for ", currentSymbol,
             " - Bid: ", DoubleToString(ticker.bidPrice, 5),
             " Ask: ", DoubleToString(ticker.askPrice, 5),
             " ID: ", ticker.tickerId);
@@ -154,34 +154,34 @@ void CreateTickerSnapshot(TickerBody &ticker)
 void ProcessTickerSnapshot()
 {
    tickerSnapshotCount++;
-   
+
    Print("--- Processing Ticker Snapshot #", tickerSnapshotCount, " ---");
-   
+
    // Step 1: Create ticker snapshot
    TickerBody originalTicker;
    CreateTickerSnapshot(originalTicker);
-   
+
    // Step 2: Serialize to MITCH binary format
    uchar serializedData[];
    int messageSize = PackTickerMessage(originalTicker, serializedData);
-   
+
    if(messageSize <= 0)
    {
       Print("ERROR: Failed to serialize ticker message!");
       return;
    }
-   
+
    Print("Serialized MITCH message: ", messageSize, " bytes");
-   
+
    // Step 3: Publish to Redis
    PublishToRedis(originalTicker, serializedData);
-   
+
    // Step 4: Verify data integrity (optional)
    if(EnableLogging)
    {
       VerifyDeserialization(serializedData);
    }
-   
+
    Print("--- Ticker Snapshot #", tickerSnapshotCount, " Complete ---");
 }
 
@@ -195,11 +195,11 @@ void PublishToRedis(const TickerBody &ticker, uchar &binaryData[])
       Print("WARNING: Redis not connected, skipping publish");
       return;
    }
-   
+
    // Publish human-readable ticker data
    string tickerChannel = ChannelPrefix + ":ticker";
    string tickerJson = CreateTickerJSON(ticker);
-   
+
    if(redis.Publish(tickerChannel, tickerJson))
    {
       Print("✓ Published ticker JSON to: ", tickerChannel);
@@ -208,10 +208,10 @@ void PublishToRedis(const TickerBody &ticker, uchar &binaryData[])
    {
       Print("✗ Failed to publish ticker JSON");
    }
-   
+
    // Publish binary MITCH data
    string binaryChannel = ChannelPrefix + ":binary";
-   
+
    if(redis.PublishBinary(binaryChannel, binaryData))
    {
       Print("✓ Published MITCH binary to: ", binaryChannel);
@@ -220,16 +220,16 @@ void PublishToRedis(const TickerBody &ticker, uchar &binaryData[])
    {
       Print("✗ Failed to publish MITCH binary");
    }
-   
+
    // Publish individual metrics for monitoring
    string metricsChannel = ChannelPrefix + ":metrics";
    string metrics = CreateMetricsString(ticker);
-   
+
    if(redis.Publish(metricsChannel, metrics))
    {
       Print("✓ Published metrics to: ", metricsChannel);
    }
-   
+
    // Store latest ticker data in Redis key-value
    string tickerKey = ChannelPrefix + ":latest:" + currentSymbol;
    redis.Set(tickerKey, tickerJson);
@@ -271,7 +271,7 @@ void VerifyDeserialization(uchar &serializedData[])
 {
    MitchHeader header;
    TickerBody deserializedTicker;
-   
+
    if(UnpackTickerMessage(serializedData, header, deserializedTicker))
    {
       Print("✓ Deserialization verification successful");
@@ -283,4 +283,4 @@ void VerifyDeserialization(uchar &serializedData[])
    {
       Print("✗ Deserialization verification failed!");
    }
-} 
+}

@@ -118,8 +118,8 @@ uchar CombineTypeAndSide(uchar orderType, uchar side)
 }
 
 // Generate ticker ID for forex pair using proper MITCH specification
-ulong GenerateForexTickerID(string symbol)
+ulong GenerateForexticker_id(string symbol)
 {
    // Use the consolidated MITCH ticker ID generation from BTRIds.mqh
-   return GetMitchTickerID(symbol);
-} 
+   return GetMitchticker_id(symbol);
+}
